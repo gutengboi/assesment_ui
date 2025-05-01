@@ -1,60 +1,3 @@
-// 'use client'
-
-// import { JSX, useEffect } from 'react';
-// import { useRouter } from 'next/navigation';
-// import { useAuthStore } from '@/lib/store/authStore';
-
-// export default function DashboardContent(): JSX.Element {
-//     const { isAuthenticated, logout } = useAuthStore();
-//     const router = useRouter();
-
-//     useEffect(() => {
-//         if (!isAuthenticated) {
-//             router.push('/login');
-//         }
-//     }, [isAuthenticated, router]);
-
-//     return (
-//         <div className="min-h-screen bg-gray-50">
-//             <nav className="bg-white shadow">
-//                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-//                     <div className="flex justify-between h-16">
-//                         <div className="flex">
-//                             <div className="flex-shrink-0 flex items-center">
-//                                 <h1 className="text-xl font-bold text-indigo-600">My App</h1>
-//                             </div>
-//                         </div>
-//                         <div className="flex items-center">
-//                             <button
-//                                 onClick={logout}
-//                                 className="ml-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-//                             >
-//                                 Logout
-//                             </button>
-//                         </div>
-//                     </div>
-//                 </div>
-//             </nav>
-
-//             <div className="py-10">
-//                 <header>
-//                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-//                         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-//                     </div>
-//                 </header>
-//                 <main>
-//                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-//                         <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6">
-//                             <p className="text-gray-700">
-//                                 Welcome to your dashboard! You are now authenticated.
-//                             </p>
-//                         </div>
-//                     </div>
-//                 </main>
-//             </div>
-//         </div>
-//     );
-// }
 'use client';
 
 import { useEffect, useState, JSX, FormEvent } from 'react';
@@ -141,7 +84,13 @@ export default function DashboardContent(): JSX.Element {
     const renderDepartment = (dept: Department, level = 0) => (
         <li key={dept.id} className="ml-4">
             <span className="font-semibold">{'—'.repeat(level)} {dept.name}</span>
-            {dept.subDepartments?.length > 0 && (
+            {/* {dept.subDepartments?.length > 0 && (
+                <ul>
+                    {dept.subDepartments.map((sub) => renderDepartment(sub, level + 1))}
+                </ul>
+            )}
+             */}
+            {Array.isArray(dept.subDepartments) && dept.subDepartments.length > 0 && (
                 <ul>
                     {dept.subDepartments.map((sub) => renderDepartment(sub, level + 1))}
                 </ul>

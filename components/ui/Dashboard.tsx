@@ -19,63 +19,119 @@ export default function DashboardContent(): JSX.Element {
     const [subNames, setSubNames] = useState<string[]>(['']);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [sessionExpired, setSessionExpired] = useState(false);
 
     useEffect(() => {
-        if (!isAuthenticated) {
+        if (!isAuthenticated || !token) {
             router.push('/login');
         } else {
             fetchDepartments();
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, token, router]);
+
+    const handleAuthError = () => {
+        setSessionExpired(true);
+        setError('Your session has expired. Please log in again.');
+        logout(); 
+        setTimeout(() => {
+            router.push('/login');
+        }, 2000);
+    };
 
     const fetchDepartments = async () => {
+        if (!token) return;
+
         setLoading(true);
         try {
+            console.log('Fetching departments with token');
+
             const res = await fetch('/api/departments', {
                 headers: {
-                    'x-token': token || '',
+                    'x-token': token,
                 },
             });
 
-            const data = await res.json();
-            console.log('Fetched departments:', data); // 🔍 Inspect this
+            if (res.status === 401) {
+                handleAuthError();
+                return;
+            }
 
-            if (!Array.isArray(data.departments)) {
+            if (!res.ok) {
+                const errorData = await res.json();
+                console.error('Department fetch error:', errorData);
+                throw new Error(errorData.error || 'Error loading departments');
+            }
+
+            const data = await res.json();
+            console.log('Fetched departments response:', data);
+
+            if (!data.departments || !Array.isArray(data.departments)) {
                 throw new Error('Invalid data format: expected an array of departments');
             }
 
             setDepartments(data.departments);
         } catch (err: any) {
+            console.error('Fetch departments error:', err);
             setError(err.message || 'Error loading departments');
         } finally {
             setLoading(false);
         }
     };
 
-
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+
+        if (!token) {
+            setError('Authentication token missing. Please log in again.');
+            return;
+        }
+
+        if (sessionExpired) {
+            setError('Your session has expired. Please log in again.');
+            return;
+        }
+
         setLoading(true);
         setError('');
+
+        const subDepartments = subNames
+            .filter(name => name.trim())
+            .map(name => ({ name: name.trim() }));
+
         try {
+            console.log('Creating department with data:', { name, subDepartments });
+
             const res = await fetch('/api/departments', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-token': token || '',
+                    'x-token': token,
                 },
                 body: JSON.stringify({
                     name,
-                    subDepartments: subNames.filter((n) => n.trim()).map((n) => ({ name: n })),
+                    subDepartments,
                 }),
             });
 
-            if (!res.ok) throw new Error('Failed to create department');
+            if (res.status === 401) {
+                handleAuthError();
+                return;
+            }
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.error('Department creation error response:', data);
+                throw new Error(data.error || data.message || 'Failed to create department');
+            }
+
+            console.log('Department created successfully:', data);
             await fetchDepartments();
             setName('');
             setSubNames(['']);
         } catch (err: any) {
-            setError(err.message);
+            console.error('Department creation error:', err);
+            setError(err.message || 'Failed to create department');
         } finally {
             setLoading(false);
         }
@@ -84,12 +140,6 @@ export default function DashboardContent(): JSX.Element {
     const renderDepartment = (dept: Department, level = 0) => (
         <li key={dept.id} className="ml-4">
             <span className="font-semibold">{'—'.repeat(level)} {dept.name}</span>
-            {/* {dept.subDepartments?.length > 0 && (
-                <ul>
-                    {dept.subDepartments.map((sub) => renderDepartment(sub, level + 1))}
-                </ul>
-            )}
-             */}
             {Array.isArray(dept.subDepartments) && dept.subDepartments.length > 0 && (
                 <ul>
                     {dept.subDepartments.map((sub) => renderDepartment(sub, level + 1))}
@@ -97,6 +147,23 @@ export default function DashboardContent(): JSX.Element {
             )}
         </li>
     );
+
+    if (sessionExpired) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="bg-white p-8 rounded shadow-md max-w-md w-full">
+                    <h2 className="text-xl font-semibold mb-4 text-red-600">Session Expired</h2>
+                    <p className="mb-4">Your login session has expired. Redirecting to login page...</p>
+                    <button
+                        onClick={() => router.push('/login')}
+                        className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                    >
+                        Go to Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -172,10 +239,12 @@ export default function DashboardContent(): JSX.Element {
                     <h2 className="text-xl font-semibold mb-4">Department Hierarchy</h2>
                     {loading ? (
                         <p>Loading...</p>
-                    ) : (
+                    ) : departments.length > 0 ? (
                         <ul className="list-disc ml-4">
                             {departments.map((dept) => renderDepartment(dept))}
                         </ul>
+                    ) : (
+                        <p className="text-gray-500">No departments found. Create one above!</p>
                     )}
                 </section>
             </main>

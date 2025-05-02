@@ -25,7 +25,6 @@ export default function LoginForm(): JSX.Element {
             await login(email, password);
             router.push('/dashboard');
         } catch (err) {
-            // Error is already set in the store
             console.error('Login error:', err);
         }
     };
